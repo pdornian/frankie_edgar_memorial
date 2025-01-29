@@ -14,6 +14,8 @@ Inspiration, code snippets, etc.
 ![edgar vs maynard II slam](media/edgar_slam.gif)
 ![angry red dana white](media/tomato.jpeg)
 
+Original readme below
+
 ---
 
 ## UFC predictions
