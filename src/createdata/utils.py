@@ -1,5 +1,6 @@
-import sys
+#not sure if this needs to be seperate, but keeping it for now.
 
+import sys
 import requests
 from bs4 import BeautifulSoup
 

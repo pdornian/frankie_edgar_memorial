@@ -14,13 +14,16 @@ from src.createdata.data_files_path import (  # isort:skip
     TOTAL_EVENT_AND_FIGHTS,
 )
 
+
 class FightDataScraper:
     def __init__(self):
-        self.HEADER: str = "R_fighter;B_fighter;R_KD;B_KD;R_SIG_STR.;B_SIG_STR.\
+        self.HEADER: str = (
+            "R_fighter;B_fighter;R_KD;B_KD;R_SIG_STR.;B_SIG_STR.\
 ;R_SIG_STR_pct;B_SIG_STR_pct;R_TOTAL_STR.;B_TOTAL_STR.;R_TD;B_TD;R_TD_pct\
 ;B_TD_pct;R_SUB_ATT;B_SUB_ATT;R_REV;B_REV;R_CTRL;B_CTRL;R_HEAD;B_HEAD;R_BODY\
 ;B_BODY;R_LEG;B_LEG;R_DISTANCE;B_DISTANCE;R_CLINCH;B_CLINCH;R_GROUND;B_GROUND\
 ;win_by;last_round;last_round_time;Format;Referee;date;location;Fight_type;Winner\n"
+        )
 
         self.NEW_EVENT_AND_FIGHTS_PATH = NEW_EVENT_AND_FIGHTS
         self.TOTAL_EVENT_AND_FIGHTS_PATH = TOTAL_EVENT_AND_FIGHTS
@@ -37,7 +40,10 @@ class FightDataScraper:
 
         if not new_events_and_fight_links:
             if self.TOTAL_EVENT_AND_FIGHTS_PATH.exists():
-                print(f'No new fight data to scrape at the moment, loaded existing data from {self.TOTAL_EVENT_AND_FIGHTS_PATH}.')
+                print(
+                    f'''No new fight data to scrape.
+                        Loading existing data from {self.TOTAL_EVENT_AND_FIGHTS_PATH}.'''
+                )
                 return
             else:
                 self._scrape_raw_fight_data(
@@ -74,7 +80,7 @@ class FightDataScraper:
         self, event_and_fight_links: Dict[str, List[str]], filepath
     ):
         if filepath.exists():
-            print(f'File {filepath} already exists, overwriting.')
+            print(f"File {filepath} already exists, overwriting.")
 
         total_stats = FightDataScraper._get_total_fight_stats(event_and_fight_links)
         with open(filepath.as_posix(), "wb") as file:
@@ -82,7 +88,7 @@ class FightDataScraper:
             file.write(bytes(total_stats, encoding="ascii", errors="ignore"))
 
     def _get_fight_stats_task(self, fight, event_info):
-        #print(threading.get_native_id())
+        # print(threading.get_native_id())
         total_fight_stats = ""
         try:
             fight_soup = make_soup(fight)
@@ -90,17 +96,11 @@ class FightDataScraper:
             fight_details = FightDataScraper._get_fight_details(fight_soup)
             result_data = FightDataScraper._get_fight_result_data(fight_soup)
             total_fight_stats = (
-                    fight_stats
-                    + ";"
-                    + fight_details
-                    + ";"
-                    + event_info
-                    + ";"
-                    + result_data
+                fight_stats + ";" + fight_details + ";" + event_info + ";" + result_data
             )
         except Exception as e:
             pass
-            #print("Error getting fight stats, " + str(e))
+            # print("Error getting fight stats, " + str(e))
 
         return total_fight_stats
 
@@ -109,7 +109,7 @@ class FightDataScraper:
         total_stats = ""
 
         l = len(event_and_fight_links)
-        print(f'Scraping data for {l} fights: ')
+        print(f"Scraping data for {l} fights: ")
         print_progress(0, l, prefix="Progress:", suffix="Complete")
 
         for index, (event, fights) in enumerate(event_and_fight_links.items()):
@@ -120,7 +120,14 @@ class FightDataScraper:
             with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
                 futures = []
                 for fight in fights:
-                    futures.append(executor.submit(FightDataScraper._get_fight_stats_task, self=cls, fight=fight, event_info=event_info))
+                    futures.append(
+                        executor.submit(
+                            FightDataScraper._get_fight_stats_task,
+                            self=cls,
+                            fight=fight,
+                            event_info=event_info,
+                        )
+                    )
                 for future in concurrent.futures.as_completed(futures):
                     fighter_stats = future.result()
                     if fighter_stats != "":
