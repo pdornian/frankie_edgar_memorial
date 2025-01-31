@@ -43,7 +43,7 @@ class FightDataScraper:
                 # if csv previously generated, load from data csv
                 print(
                     f"""No new fight data to scrape.
-                        Loading existing data from {self.TOTAL_EVENT_AND_FIGHTS_PATH}."""
+                        {self.TOTAL_EVENT_AND_FIGHTS_PATH} up to date."""
                 )
                 return
             else:
@@ -96,19 +96,18 @@ class FightDataScraper:
         if filepath.exists():
             print(f"File {filepath} already exists, overwriting.")
 
-        total_stats = FightDataScraper._get_total_fight_stats(event_and_fight_links)
+        total_stats = self._get_total_fight_stats(event_and_fight_links)
         with open(filepath.as_posix(), "wb") as file:
             file.write(bytes(self.HEADER, encoding="ascii", errors="ignore"))
             file.write(bytes(total_stats, encoding="ascii", errors="ignore"))
 
     def _get_fight_stats_task(self, fight, event_info):
-        # print(threading.get_native_id())
         total_fight_stats = ""
         try:
             fight_soup = make_soup(fight)
-            fight_stats = FightDataScraper._get_fight_stats(fight_soup)
-            fight_details = FightDataScraper._get_fight_details(fight_soup)
-            result_data = FightDataScraper._get_fight_result_data(fight_soup)
+            fight_stats = self._get_fight_stats(fight_soup)
+            fight_details = self._get_fight_details(fight_soup)
+            result_data = self._get_fight_result_data(fight_soup)
             total_fight_stats = (
                 fight_stats + ";" + fight_details + ";" + event_info + ";" + result_data
             )
@@ -121,10 +120,9 @@ class FightDataScraper:
     # unsure why any of this stuff is class methods.
     # seems like it could be instance defined.
 
-    # wonder if it would be better to parallize at the event level
-
-    @classmethod
-    def _get_total_fight_stats(cls, event_and_fight_links: Dict[str, List[str]]) -> str:
+    def _get_total_fight_stats(
+        self, event_and_fight_links: Dict[str, List[str]]
+    ) -> str:
         total_stats = ""
 
         fight_count = len(event_and_fight_links)
@@ -133,7 +131,7 @@ class FightDataScraper:
 
         for index, (event, fights) in enumerate(event_and_fight_links.items()):
             event_soup = make_soup(event)
-            event_info = FightDataScraper._get_event_info(event_soup)
+            event_info = self._get_event_info(event_soup)
 
             # Get data for each fight in the event in parallel.
             with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
@@ -141,8 +139,8 @@ class FightDataScraper:
                 for fight in fights:
                     futures.append(
                         executor.submit(
-                            FightDataScraper._get_fight_stats_task,
-                            self=cls,
+                            self._get_fight_stats_task,
+                            # self=self,
                             fight=fight,
                             event_info=event_info,
                         )
@@ -160,9 +158,11 @@ class FightDataScraper:
 
         return total_stats
 
-    @classmethod
-    def _get_fight_stats(cls, fight_soup: BeautifulSoup) -> str:
+    def _get_fight_stats(self, fight_soup: BeautifulSoup) -> str:
         tables = fight_soup.findAll("tbody")
+        # hard coded to grab totals and significant strike stats.
+        # skips per round stats
+        # i think we want per round stats.
         total_fight_data = [tables[0], tables[2]]
         fight_stats = []
         for table in total_fight_data:
@@ -186,8 +186,7 @@ class FightDataScraper:
         fight_stats = ";".join(fight_stats)
         return fight_stats
 
-    @classmethod
-    def _get_fight_details(cls, fight_soup: BeautifulSoup) -> str:
+    def _get_fight_details(self, fight_soup: BeautifulSoup) -> str:
         columns = ""
         for div in fight_soup.findAll("div", {"class": "b-fight-details__content"}):
             for col in div.findAll("p", {"class": "b-fight-details__text"}):
@@ -213,8 +212,7 @@ class FightDataScraper:
 
         return fight_details
 
-    @classmethod
-    def _get_event_info(cls, event_soup: BeautifulSoup) -> str:
+    def _get_event_info(self, event_soup: BeautifulSoup) -> str:
         event_info = ""
         for info in event_soup.findAll("li", {"class": "b-list__box-list-item"}):
             if event_info == "":
@@ -233,8 +231,7 @@ class FightDataScraper:
 
         return event_info
 
-    @classmethod
-    def _get_fight_result_data(cls, fight_soup: BeautifulSoup) -> str:
+    def _get_fight_result_data(self, fight_soup: BeautifulSoup) -> str:
         winner = ""
         for div in fight_soup.findAll("div", {"class": "b-fight-details__person"}):
             if (
