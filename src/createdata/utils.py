@@ -1,4 +1,4 @@
-#not sure if this needs to be seperate, but keeping it for now.
+# not sure if this needs to be seperate, but keeping it for now.
 
 import sys
 import requests

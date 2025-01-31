@@ -44,13 +44,14 @@ class UFCLinks:
 
         return new_event_links, all_event_links
 
-    def get_event_and_fight_links(self) -> (Dict, Dict):
+    # could put check in this so that it doesn't get future event links
+    def get_event_and_fight_links(self) -> tuple[Dict, Dict]:
         def get_fight_links(event_links: List[str]) -> Dict[str, List[str]]:
             event_and_fight_links = {}
 
-            l = len(event_links)
+            num_events = len(event_links)
             print("Scraping event and fight links: ")
-            print_progress(0, l, prefix="Progress:", suffix="Complete")
+            print_progress(0, num_events, prefix="Progress:", suffix="Complete")
 
             for index, link in enumerate(event_links):
                 event_fights = []
@@ -65,13 +66,17 @@ class UFCLinks:
                     event_fights.append(href)
                 event_and_fight_links[link] = event_fights
 
-                print_progress(index + 1, l, prefix="Progress:", suffix="Complete")
+                print_progress(
+                    index + 1, num_events, prefix="Progress:", suffix="Complete"
+                )
 
             return event_and_fight_links
 
         new_events_and_fight_links = {}
+        # if links file exists, load from that.
         if self.EVENT_AND_FIGHT_LINKS_PICKLE_PATH.exists():
             if not self.new_event_links:
+                # if no new events, just load previous file in tote.
                 with open(
                     self.EVENT_AND_FIGHT_LINKS_PICKLE_PATH.as_posix(), "rb"
                 ) as pickle_in:
@@ -79,6 +84,7 @@ class UFCLinks:
 
                 return new_events_and_fight_links, all_events_and_fight_links
             else:
+                # otherwise, get new fight links.
                 new_events_and_fight_links = get_fight_links(self.new_event_links)
 
         all_events_and_fight_links = get_fight_links(self.all_event_links)

@@ -6,3 +6,7 @@ __pycache__/
 
 # Jupyter NB Checkpoints
 .ipynb_checkpoints/
+
+#dont upload pickle or data files
+.pickle
+.csv

@@ -1,6 +1,5 @@
 import os
 import concurrent.futures
-import threading
 from typing import Dict, List
 
 import pandas as pd
@@ -39,18 +38,22 @@ class FightDataScraper:
         print("Now, scraping event and fight data!\n")
 
         if not new_events_and_fight_links:
+            # if no new events
             if self.TOTAL_EVENT_AND_FIGHTS_PATH.exists():
+                # if csv previously generated, load from data csv
                 print(
-                    f'''No new fight data to scrape.
-                        Loading existing data from {self.TOTAL_EVENT_AND_FIGHTS_PATH}.'''
+                    f"""No new fight data to scrape.
+                        Loading existing data from {self.TOTAL_EVENT_AND_FIGHTS_PATH}."""
                 )
                 return
             else:
+                # if no csv, scrape everything and make it.
                 self._scrape_raw_fight_data(
                     all_events_and_fight_links,
                     filepath=self.TOTAL_EVENT_AND_FIGHTS_PATH,
                 )
         else:
+            # scrape new event data
             self._scrape_raw_fight_data(
                 new_events_and_fight_links, filepath=self.NEW_EVENT_AND_FIGHTS_PATH
             )
@@ -58,21 +61,32 @@ class FightDataScraper:
             new_event_and_fights_data = pd.read_csv(self.NEW_EVENT_AND_FIGHTS_PATH)
             old_event_and_fights_data = pd.read_csv(self.TOTAL_EVENT_AND_FIGHTS_PATH)
 
+            # verify same column count
             assert len(new_event_and_fights_data.columns) == len(
                 old_event_and_fights_data.columns
             )
 
+            # restricts new event cols to those with labels of old events/ensures same col order
+            # feels like mergine new/old fight data should be a seperate method
             new_event_and_fights_data = new_event_and_fights_data[
                 list(old_event_and_fights_data.columns)
             ]
 
-            latest_total_fight_data = new_event_and_fights_data.append(
-                old_event_and_fights_data, ignore_index=True
+            # might be worth verifying integrity here
+            latest_total_fight_data = pd.concat(
+                [new_event_and_fights_data, old_event_and_fights_data],
+                axis=1,
+                ignore_index=True,
             )
-            latest_total_fight_data.to_csv(self.TOTAL_EVENT_AND_FIGHTS_PATH, index=None)
 
+            # latest_total_fight_data = new_event_and_fights_data.append(
+            #     old_event_and_fights_data, ignore_index=True
+            # )
+
+            latest_total_fight_data.to_csv(self.TOTAL_EVENT_AND_FIGHTS_PATH, index=None)
+            print(f"Updated {self.TOTAL_EVENT_AND_FIGHTS_PATH} with new fight data")
             os.remove(self.NEW_EVENT_AND_FIGHTS_PATH)
-            print("Removed new event and fight files")
+            print("Removed temproary files.")
 
         print("Successfully scraped and saved ufc fight data!\n")
 
@@ -99,18 +113,23 @@ class FightDataScraper:
                 fight_stats + ";" + fight_details + ";" + event_info + ";" + result_data
             )
         except Exception as e:
+            print("Error getting fight stats, " + str(e))
             pass
-            # print("Error getting fight stats, " + str(e))
 
         return total_fight_stats
+
+    # unsure why any of this stuff is class methods.
+    # seems like it could be instance defined.
+
+    # wonder if it would be better to parallize at the event level
 
     @classmethod
     def _get_total_fight_stats(cls, event_and_fight_links: Dict[str, List[str]]) -> str:
         total_stats = ""
 
-        l = len(event_and_fight_links)
-        print(f"Scraping data for {l} fights: ")
-        print_progress(0, l, prefix="Progress:", suffix="Complete")
+        fight_count = len(event_and_fight_links)
+        print(f"Scraping data for {fight_count} fights: ")
+        print_progress(0, fight_count, prefix="Progress:", suffix="Complete")
 
         for index, (event, fights) in enumerate(event_and_fight_links.items()):
             event_soup = make_soup(event)
@@ -135,7 +154,9 @@ class FightDataScraper:
                             total_stats = fighter_stats
                         else:
                             total_stats = total_stats + "\n" + fighter_stats
-                    print_progress(index + 1, l, prefix="Progress:", suffix="Complete")
+                    print_progress(
+                        index + 1, fight_count, prefix="Progress:", suffix="Complete"
+                    )
 
         return total_stats
 
