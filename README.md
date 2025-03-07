@@ -1,9 +1,28 @@
-## UFC predictions
+Frankie Edgar vs Ben Henderson II was a robbery.
 
+## MMA Stat Aggregator
+TBD
+
+## Acknowledgments
+
+Inspiration, code snippets, etc.
+* Forked from [Rajeev Warrier's UFC Dataset](https://github.com/WarrierRajeev/UFC-Predictions)
+* Cross referenced [Tiger Millionaire](https://github.com/shortlikeafox/tiger-millionaire)
+
+
+## Important Images
+![edgar vs maynard II slam](media/edgar_slam.gif)
+![angry red dana white](media/tomato.jpeg)
+
+Original readme below
+
+---
+
+## UFC predictions
 
 ### Usage
 
-![UFC app](https://github.com/WarrierRajeev/UFC-Predictions/blob/master/ufc-app.png)
+![UFC app](media/ufc-app.png)
 
 - Go to https://ufc-predictions.rajeevwarrier.com/
 - Select weight-class of the bout
@@ -25,7 +44,7 @@
 - Accuracy (valid): 0.7218
 - AUC Score (valid): 0.7763
 
-![Confusion Matrix](https://github.com/WarrierRajeev/UFC-Predictions/blob/master/conf-matrix.png)
+![Confusion Matrix](media/conf-matrix.png)
 
 - `0` corresponds to **Blue**: Fighter in the blue corner
 - `1` corresponds to **Red**: Fighter in the red corner

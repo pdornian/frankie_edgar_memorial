@@ -1,6 +1,5 @@
 import pickle
 import concurrent.futures
-import threading
 from typing import Dict, List
 
 import numpy as np
@@ -13,6 +12,7 @@ from src.createdata.data_files_path import (  # isort:skip
     PAST_FIGHTER_LINKS_PICKLE,
     SCRAPED_FIGHTER_DATA_DICT_PICKLE,
 )
+
 
 class FighterDetailsScraper:
     def __init__(self):
@@ -47,7 +47,9 @@ class FighterDetailsScraper:
         ]
         return fighter_group_urls
 
-    def _get_fighter_name_and_link(self,) -> Dict[str, List[str]]:
+    def _get_fighter_name_and_link(
+        self,
+    ) -> Dict[str, List[str]]:
         fighter_name_and_link = {}
         fighter_name = ""
 
@@ -116,42 +118,52 @@ class FighterDetailsScraper:
                 continue
             data.append(
                 div.text.replace("  ", "")
-                    .replace("\n", "")
-                    .replace("Height:", "")
-                    .replace("Weight:", "")
-                    .replace("Reach:", "")
-                    .replace("STANCE:", "")
-                    .replace("DOB:", "")
-                    .replace("SLpM:", "")
-                    .replace("Str. Acc.:", "")
-                    .replace("SApM:", "")
-                    .replace("Str. Def:", "")
-                    .replace("TD Avg.:", "")
-                    .replace("TD Acc.:", "")
-                    .replace("TD Def.:", "")
-                    .replace("Sub. Avg.:", "")
+                .replace("\n", "")
+                .replace("Height:", "")
+                .replace("Weight:", "")
+                .replace("Reach:", "")
+                .replace("STANCE:", "")
+                .replace("DOB:", "")
+                .replace("SLpM:", "")
+                .replace("Str. Acc.:", "")
+                .replace("SApM:", "")
+                .replace("Str. Def:", "")
+                .replace("TD Avg.:", "")
+                .replace("TD Acc.:", "")
+                .replace("TD Def.:", "")
+                .replace("Sub. Avg.:", "")
             )
         return fighter_name, data
 
     def _get_fighter_name_and_details(
-            self, fighter_name_and_link: Dict[str, List[str]]
+        self, fighter_name_and_link: Dict[str, List[str]]
     ) -> None:
         fighter_name_and_details = {}
 
         l = len(fighter_name_and_link)
-        print(f'Scraping data for {l} fighters: ')
+        print(f"Scraping data for {l} fighters: ")
 
         # Get fighter data in parallel.
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
             futures = []
-            for index, (fighter_name, fighter_url) in enumerate(fighter_name_and_link.items()):
-                futures.append(executor.submit(FighterDetailsScraper._get_fighter_data_task, self=self,
-                                               fighter_name=fighter_name, fighter_url=fighter_url))
+            for index, (fighter_name, fighter_url) in enumerate(
+                fighter_name_and_link.items()
+            ):
+                futures.append(
+                    executor.submit(
+                        FighterDetailsScraper._get_fighter_data_task,
+                        self=self,
+                        fighter_name=fighter_name,
+                        fighter_url=fighter_url,
+                    )
+                )
             idx_progress = 0
             print_progress(0, l, prefix="Progress:", suffix="Complete")
             for future in concurrent.futures.as_completed(futures):
                 fighter_name_and_details[future.result()[0]] = future.result()[1]
-                print_progress(idx_progress + 1, l, prefix="Progress:", suffix="Complete")
+                print_progress(
+                    idx_progress + 1, l, prefix="Progress:", suffix="Complete"
+                )
                 idx_progress += 1
 
         fighters_with_no_data = []
@@ -196,7 +208,9 @@ class FighterDetailsScraper:
 
         if not self.new_fighter_links:
             if self.FIGHTER_DETAILS_PATH.exists():
-                print(f'No new fighter data to scrape at the moment, loaded existing data from {self.FIGHTER_DETAILS_PATH}.')
+                print(
+                    f"No new fighter data to scrape at the moment, loaded existing data from {self.FIGHTER_DETAILS_PATH}."
+                )
                 return
             else:
                 self._get_fighter_name_and_details(self.all_fighter_links)
@@ -217,4 +231,6 @@ class FighterDetailsScraper:
             )
 
         fighter_details_df.to_csv(self.FIGHTER_DETAILS_PATH, index_label="fighter_name")
-        print(f'Successfully scraped and saved ufc fighter data to {self.FIGHTER_DETAILS_PATH}\n')
+        print(
+            f"Successfully scraped and saved ufc fighter data to {self.FIGHTER_DETAILS_PATH}\n"
+        )
