@@ -32,3 +32,11 @@ strike_cols = [
     "CLINCH",
     "GROUND",
 ]
+
+event_cols = [
+    "ID",
+    "TITLE",
+    "DATE",
+    "LOCATION",
+    "LINK",
+]
