@@ -7,7 +7,7 @@ import pandas as pd
 
 from src.createdata.utils import make_soup, print_progress
 
-from src.createdata.data_files_path import (  # isort:skip
+from src.createdata.filepaths_and_schema import (  # isort:skip
     FIGHTER_DETAILS,
     PAST_FIGHTER_LINKS_PICKLE,
     SCRAPED_FIGHTER_DATA_DICT_PICKLE,

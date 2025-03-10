@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 from src.createdata.scrape_fight_links import UFCLinks
 from src.createdata.utils import make_soup, print_progress
 
-from src.createdata.data_files_path import (  # isort:skip
+from src.createdata.filepaths_and_schema import (  # isort:skip
     NEW_FIGHTS_DATA_PATH,
     TOTAL_FIGHTS_DATA_PATH,
 )

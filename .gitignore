@@ -1,12 +1,12 @@
 #Byte-compiled / optimized / DLL files
-__pycache__/
+**/__pycache__/
 
 # VS Code
-.vscode/
+**/.vscode/
 
 # Jupyter NB Checkpoints
-.ipynb_checkpoints/
+**/.ipynb_checkpoints/
 
 #dont upload pickle or data files
-.pickle
-.csv
+**/.pickle
+**/.csv
