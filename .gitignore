@@ -8,5 +8,5 @@
 **/.ipynb_checkpoints/
 
 #dont upload pickle or data files
-**/.pickle
-**/.csv
+**/*.pickle
+**/*.csv
