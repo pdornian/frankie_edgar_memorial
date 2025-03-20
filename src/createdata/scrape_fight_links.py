@@ -110,7 +110,10 @@ class UFCLinks:
                 # we could make it only write the new rows, but this file is small enough that i don't care
                 # and sorting semantics are easier like this.
                 print(f"{len(new_event_ids)} new event/s. Updating local event data.")
-                updated_df = pd.concat([web_event_df[new_event_ids], local_event_df])
+                # return  web_event_df, new_event_ids, local_event_df
+                updated_df = pd.concat(
+                    [web_event_df.loc[new_event_ids], local_event_df]
+                )
                 self._write_event_data(updated_df)
                 # return updated event df if new events present in web
                 event_df = updated_df
