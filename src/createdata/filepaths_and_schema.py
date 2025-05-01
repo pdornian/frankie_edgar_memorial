@@ -30,19 +30,20 @@ UFC_DATA_PATH = BASE_PATH / "data.csv"
 web_fight_cols = [
     "FIGHTER",
     "KD",
-    "SIG STR",
-    "SIG STR%",
-    "TOTAL STR",
+    "SIG_STR",
+    "SIG_STR_PCT",
+    "ALL_STR",
     "TD",
-    "TD%",
+    "TD_PCT",
+    "SUB_ATT",
     "REV",
     "CTRL",
 ]
 
 web_strike_cols = [
     "FIGHTER",
-    "SIG STR",
-    "SIG STR%",
+    "SIG_STR",
+    "SIG_STR_PCT",
     "HEAD",
     "BODY",
     "LEG",
