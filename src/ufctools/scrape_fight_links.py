@@ -3,9 +3,9 @@ from io import StringIO
 import pandas as pd
 import pickle
 
-from src.createdata.utils import make_soup, print_progress
+from src.ufctools.utils import make_soup, print_progress
 
-from src.createdata.filepaths_and_schema import (  # isort:skip
+from src.ufctools.filepaths_and_schema import (  # isort:skip
     FIGHT_LINKS_PICKLE,
     EVENT_DATA_PATH,
     event_cols,

@@ -8,13 +8,12 @@ FIGHT_LINKS_PICKLE = BASE_PATH / "fight_links.pickle"
 PAST_EVENT_LINKS_PICKLE = BASE_PATH / "past_event_links.pickle"
 PAST_FIGHTER_LINKS_PICKLE = BASE_PATH / "past_fighter_links.pickle"
 SCRAPED_FIGHTER_DATA_DICT_PICKLE = BASE_PATH / "scraped_fighter_data_dict.pickle"
-
-EVENT_DATA_PATH = BASE_PATH / "event_data.csv"
-NEW_FIGHTS_DATA_PATH = BASE_PATH / "raw_new_fight_data.csv"
+NEW_FIGHTS_DATA_PATH = BASE_PATH / "temp_new_fight_data.csv"
 FIGHT_DATA_PATH = BASE_PATH / "fight_data.csv"
 PREPROCESSED_DATA_PATH = BASE_PATH / "preprocessed_data.csv"
-FIGHTER_DETAILS_PATH = BASE_PATH / "raw_fighter_details.csv"
+FIGHTER_DETAILS_DATA_PATH = BASE_PATH / "raw_fighter_details.csv"
 UFC_DATA_PATH = BASE_PATH / "data.csv"
+EVENT_DATA_PATH = BASE_PATH / "event_data.csv"
 
 # Parameters for data schema and column names go here.
 # Not needed if inferring column names from headers
@@ -117,30 +116,29 @@ pct_stat_cols = [
     "GROUND_STR",
 ]
 
+# def append_col_prefix_suffix(
+#     fighter_prefix=("B", "R"),
+#     pct_suffix=("LND", "ATT", "PCT"),
+#     rnd_suffix=("TOT", "R1", "R2", "R3", "R4", "R5"),
+#     shared_cols=shared_cols,
+#     gen_cols=gen_stat_cols,
+#     pct_cols=pct_stat_cols,
+# ):
+#     gen_stat_cols = [
+#         f"{pre}_{stat}_{r_suf}"
+#         for pre in fighter_prefix
+#         for stat in gen_cols
+#         for r_suf in rnd_suffix
+#     ]
+#     pct_stat_cols = [
+#         f"{pre}_{stat}_{p_suf}_{r_suf}"
+#         for pre in fighter_prefix
+#         for stat in pct_cols
+#         for r_suf in rnd_suffix
+#         for p_suf in pct_suffix
+#     ]
+#     fight_cols = shared_cols + gen_stat_cols + pct_stat_cols
+#     return fight_cols
 
-def append_col_prefix_suffix(
-    fighter_prefix=("B", "R"),
-    pct_suffix=("LND", "ATT", "PCT"),
-    rnd_suffix=("TOT", "R1", "R2", "R3", "R4", "R5"),
-    shared_cols=shared_cols,
-    gen_cols=gen_stat_cols,
-    pct_cols=pct_stat_cols,
-):
-    gen_stat_cols = [
-        f"{pre}_{stat}_{r_suf}"
-        for pre in fighter_prefix
-        for stat in gen_cols
-        for r_suf in rnd_suffix
-    ]
-    pct_stat_cols = [
-        f"{pre}_{stat}_{p_suf}_{r_suf}"
-        for pre in fighter_prefix
-        for stat in pct_cols
-        for r_suf in rnd_suffix
-        for p_suf in pct_suffix
-    ]
-    fight_cols = shared_cols + gen_stat_cols + pct_stat_cols
-    return fight_cols
 
-
-fight_cols = append_col_prefix_suffix()
+# fight_cols = append_col_prefix_suffix()

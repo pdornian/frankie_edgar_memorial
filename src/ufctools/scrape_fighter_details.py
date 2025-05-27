@@ -5,9 +5,9 @@ from typing import Dict, List
 import numpy as np
 import pandas as pd
 
-from src.createdata.utils import make_soup, print_progress
+from src.ufctools.utils import make_soup, print_progress
 
-from src.createdata.filepaths_and_schema import (  # isort:skip
+from src.ufctools.filepaths_and_schema import (  # isort:skip
     FIGHTER_DETAILS,
     PAST_FIGHTER_LINKS_PICKLE,
     SCRAPED_FIGHTER_DATA_DICT_PICKLE,

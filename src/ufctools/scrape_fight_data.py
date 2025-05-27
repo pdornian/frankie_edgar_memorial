@@ -5,10 +5,10 @@ from typing import Dict, List
 import pandas as pd
 from bs4 import BeautifulSoup
 
-from src.createdata.scrape_fight_links import UFCLinks
-from src.createdata.utils import make_soup, print_progress
+from src.ufctools.scrape_fight_links import UFCLinks
+from src.ufctools.utils import make_soup, print_progress
 
-from src.createdata.filepaths_and_schema import (  # isort:skip
+from src.ufctools.filepaths_and_schema import (  # isort:skip
     NEW_FIGHTS_DATA_PATH,
     TOTAL_FIGHTS_DATA_PATH,
 )

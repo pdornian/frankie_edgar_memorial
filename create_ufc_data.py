@@ -1,7 +1,9 @@
+#moved this to root, might make it explode, fix later.
+
 import time
-from src.createdata.preprocess import Preprocessor
-from src.createdata.scrape_fight_data import FightDataScraper
-from src.createdata.scrape_fighter_details import FighterDetailsScraper
+from src.ufctools.preprocess import Preprocessor
+from src.ufctools.scrape_fight_data import FightDataScraper
+from src.ufctools.scrape_fighter_details import FighterDetailsScraper
 
 time_start = time.time()
 print("Creating fight data \n")

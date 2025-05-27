@@ -3,9 +3,9 @@ import math
 import numpy as np
 import pandas as pd
 
-from src.createdata.preprocess_fighter_data import FighterDetailProcessor
+from src.ufctools.preprocess_fighter_data import FighterDetailProcessor
 
-from src.createdata.filepaths_and_schema import (  # isort:skip
+from src.ufctools.filepaths_and_schema import (  # isort:skip
     FIGHTER_DETAILS,
     PREPROCESSED_DATA,
     TOTAL_EVENT_AND_FIGHTS,
