@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pandas as pd
 
-from src.ufctools.preprocess_fighter_data import FighterDetailProcessor
+from src.ufctools.legacy.preprocess_fighter_data import FighterDetailProcessor
 
 from src.ufctools.filepaths_and_schema import (  # isort:skip
     FIGHTER_DETAILS,

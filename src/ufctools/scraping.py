@@ -11,4 +11,4 @@ from bs4 import BeautifulSoup
 import pandas as pd
 from tqdm import tqdm
 
-from utils
+from src.ufctools.utils import make_soup, print_progress

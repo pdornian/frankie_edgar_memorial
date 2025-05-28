@@ -5,7 +5,7 @@ from typing import Dict, List
 import pandas as pd
 from bs4 import BeautifulSoup
 
-from src.ufctools.scrape_fight_links import UFCLinks
+from src.ufctools.legacy.scrape_fight_links import UFCLinks
 from src.ufctools.utils import make_soup, print_progress
 
 from src.ufctools.filepaths_and_schema import (  # isort:skip
