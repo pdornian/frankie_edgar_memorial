@@ -10,3 +10,7 @@ __pycache__/
 #dont upload pickle or data files
 .pickle
 .csv
+
+# manually ignoring these because they were tracked before i did the gitignore.
+data/event_data.csv
+data/raw_fight_data.csv
