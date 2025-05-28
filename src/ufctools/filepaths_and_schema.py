@@ -5,8 +5,8 @@ from pathlib import Path
 
 BASE_PATH = Path(os.getcwd()) / "data"
 FIGHT_LINKS_PICKLE = BASE_PATH / "fight_links.pickle"
-NEW_FIGHTS_DATA_PATH = BASE_PATH / "temp_new_fight_data.csv"
-FIGHT_DATA_PATH = BASE_PATH / "fight_data.csv"
+RAW_NEW_FIGHT_DATA_PATH = BASE_PATH / "temp_raw_fight_data.csv"
+RAW_FIGHT_DATA_PATH = BASE_PATH / "raw_fight_data.csv"
 EVENT_DATA_PATH = BASE_PATH / "event_data.csv"
 
 # haven't used this stuff yet -- will probably change

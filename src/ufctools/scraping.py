@@ -11,8 +11,8 @@ from tqdm import tqdm
 # hardcoded headers/filepaths
 from src.ufctools.filepaths_and_schema import (
     FIGHT_LINKS_PICKLE,
-    NEW_FIGHTS_DATA_PATH,
-    FIGHT_DATA_PATH,
+    RAW_NEW_FIGHT_DATA_PATH,
+    RAW_FIGHT_DATA_PATH,
     EVENT_DATA_PATH,
     web_fight_cols,
     web_strike_cols,
@@ -55,6 +55,9 @@ class UFCLinks:
             fight_link_dict = self.FIGHT_LINKS.copy()
             fight_link_dict.update(new_fight_links)
 
+        # this triggers resaving of event_data.csv and fight_links.pickle
+        # whether or not there's actually new data, which is kinda confusing
+        # but i don't wanna fix it right now.
         self.FIGHT_LINKS = fight_link_dict
         self._update_event_fight_link_scraped_status()
         self._write_fight_links()
@@ -234,12 +237,29 @@ class UFCLinks:
 
 class FightDataScraper:
     def __init__(self):
-        self.NEW_FIGHTS_DATA_PATH = NEW_FIGHTS_DATA_PATH
-        self.FIGHT_DATA_PATH = FIGHT_DATA_PATH
+        self.NEW_FIGHTS_DATA_PATH = RAW_NEW_FIGHT_DATA_PATH
+        self.FIGHT_DATA_PATH = RAW_FIGHT_DATA_PATH
         # when fight scraper initiated, update/load event links.
         self.events = UFCLinks()
         self.events.get_fight_links()
+        # load any existing processed data
         self.fight_data = self._load_local_fight_data()
+        # load any existing unprocessed data
+        self.temp_fight_data = self._load_temp_fight_data()
+
+    def _load_temp_fight_data(self) -> None:
+        if self.NEW_FIGHTS_DATA_PATH.exists():
+            print(
+                f"Reading unprocessed local fight data from {self.NEW_FIGHTS_DATA_PATH}"
+            )
+            local_fight_df = pd.read_csv(
+                self.NEW_FIGHTS_DATA_PATH,
+                sep=";",
+                index_col="FIGHT_ID",
+            )
+            return local_fight_df
+        else:
+            return None
 
     def _load_local_fight_data(self) -> None:
         if self.FIGHT_DATA_PATH.exists():
@@ -247,7 +267,6 @@ class FightDataScraper:
             local_fight_df = pd.read_csv(
                 self.FIGHT_DATA_PATH,
                 sep=";",
-                parse_dates=["DATE"],
                 index_col="FIGHT_ID",
             )
             return local_fight_df
@@ -271,6 +290,12 @@ class FightDataScraper:
         # get links to all events with FIGHT_DATA_SCRAPED == FALSE
         unscraped_events = events_df[~events_df["FIGHT_DATA_SCRAPED"]]
 
+        # EXIT HERE IF NOTHING TO SCRAPE
+        # ugly breakpoint
+        if unscraped_events.shape[0] == 0:
+            print("No new fights to scrape.")
+            return None
+
         # multiprocessing goes here???
         # should this save as we go?
 
@@ -293,10 +318,31 @@ class FightDataScraper:
         # update local event saved data file
         self.events._write_event_data(events_df)
 
+        # save scraped data to temp file
+        # BEFORE MERGING TO EXISTING DATA (just in case)
         new_fights_df = pd.concat(new_fight_data)
-        new_fights_df.to_csv(self.NEW_FIGHTS_DATA_PATH)
+        new_fights_df.to_csv(self.NEW_FIGHTS_DATA_PATH, sep=";")
 
+        self._update_fight_data()
         return new_fights_df
+
+    def _update_fight_data(self, cleanup_temp_data=True):
+        # if local fight data exists, concatenate temp data to it and overwrite
+        # otherwise, promote temp data file to local fight data
+
+        if self.fight_data is not None:
+            print("Updating fight data.")
+            self.fight_data = pd.concat([self.temp_fight_data, self.fight_data])
+        else:
+            self.fight_data = self.temp_fight_data.copy()
+        print(f"Saving fight data to {self.FIGHT_DATA_PATH}")
+        self.fight_data.to_csv(self.FIGHT_DATA_PATH, sep=";")
+
+        if cleanup_temp_data:
+            print("Removing temporary files")
+            self.temp_fight_data = None
+            os.remove(self.NEW_FIGHTS_DATA_PATH)
+        return None
 
     # given an event link, scrape all fights to dataframe
     def scrape_event_fights(self, event_link: str) -> pd.DataFrame:
