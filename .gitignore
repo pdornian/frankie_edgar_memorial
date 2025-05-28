@@ -10,3 +10,4 @@
 #dont upload pickle or data files
 **/*.pickle
 **/*.csv
+data/
