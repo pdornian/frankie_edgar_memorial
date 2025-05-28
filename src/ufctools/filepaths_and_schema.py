@@ -1,8 +1,6 @@
 import os
 from pathlib import Path
 
-# from itertools import product
-
 BASE_PATH = Path(os.getcwd()) / "data"
 FIGHT_LINKS_PICKLE = BASE_PATH / "fight_links.pickle"
 PAST_EVENT_LINKS_PICKLE = BASE_PATH / "past_event_links.pickle"

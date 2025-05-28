@@ -38,3 +38,26 @@ def print_progress(
     if iteration == total:
         sys.stdout.write("\n")
     sys.stdout.flush()
+
+
+# helper functions for adding prefixes/suffixes to dictionary labels.
+# lots of stats can be scraped via same routine iterated over some html object
+# but need different prefixes/suffixes (e.g. R or B for red or blue fighter, or R1-R5 for round)
+def add_prefix_label(old_dict: dict[str, str], prefix: str) -> dict[str, str]:
+    new_dict = {}
+
+    for lbl, val in old_dict.items():
+        new_lbl = f"{prefix}_{lbl}"
+        new_dict[new_lbl] = val
+
+    return new_dict
+
+
+def add_suffix_label(old_dict: dict[str, str], suffix: str) -> dict[str, str]:
+    new_dict = {}
+
+    for lbl, val in old_dict.items():
+        new_lbl = f"{lbl}_{suffix}"
+        new_dict[new_lbl] = val
+
+    return new_dict
