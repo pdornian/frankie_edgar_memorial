@@ -1,20 +1,23 @@
 import os
 from pathlib import Path
 
+# ###FILEPATHS####
+
 BASE_PATH = Path(os.getcwd()) / "data"
 FIGHT_LINKS_PICKLE = BASE_PATH / "fight_links.pickle"
-PAST_EVENT_LINKS_PICKLE = BASE_PATH / "past_event_links.pickle"
-PAST_FIGHTER_LINKS_PICKLE = BASE_PATH / "past_fighter_links.pickle"
-SCRAPED_FIGHTER_DATA_DICT_PICKLE = BASE_PATH / "scraped_fighter_data_dict.pickle"
 NEW_FIGHTS_DATA_PATH = BASE_PATH / "temp_new_fight_data.csv"
 FIGHT_DATA_PATH = BASE_PATH / "fight_data.csv"
+EVENT_DATA_PATH = BASE_PATH / "event_data.csv"
+
+# haven't used this stuff yet -- will probably change
+SCRAPED_FIGHTER_DATA_DICT_PICKLE = BASE_PATH / "scraped_fighter_data_dict.pickle"
+PAST_FIGHTER_LINKS_PICKLE = BASE_PATH / "past_fighter_links.pickle"
 PREPROCESSED_DATA_PATH = BASE_PATH / "preprocessed_data.csv"
 FIGHTER_DETAILS_DATA_PATH = BASE_PATH / "raw_fighter_details.csv"
 UFC_DATA_PATH = BASE_PATH / "data.csv"
-EVENT_DATA_PATH = BASE_PATH / "event_data.csv"
 
-# Parameters for data schema and column names go here.
-# Not needed if inferring column names from headers
+
+# ###TABLE HEADERS###
 
 # some ufc table headers have wrong names in source code (TD is often labelled TD% internally)
 # which busts pd.read_html because it sees two TD% columns.
@@ -60,6 +63,8 @@ event_cols = [
     "FIGHT_LINKS_SCRAPED",
     "FIGHT_DATA_SCRAPED",
 ]
+
+# ###UNSURE IF USING STUFF BELOW THIS###
 
 # column labels for processed fight data
 # each fighter (R: red, B: blue)
