@@ -50,6 +50,7 @@ class UFCLinks:
             fight_link_dict = self._initiate_fight_links()
         else:
             print("Checking for new events to scrape")
+            # check new events, load local data and update
             new_fight_links = self._get_unscraped_fight_links()
             fight_link_dict = self.FIGHT_LINKS.copy()
             fight_link_dict.update(new_fight_links)
@@ -60,6 +61,7 @@ class UFCLinks:
 
         return fight_link_dict
 
+    # should probably break this into subfunctions
     def _initiate_class(self):
         # get latest event data from web
         print(f"Pulling event data from {self.all_events_url}")
@@ -71,10 +73,10 @@ class UFCLinks:
             # with no comparisons
 
             print(
-                f"No existing event data, writing web data locally to {self.EVENT_DATA_PATH}"
+                f"No existing event data, writing all web data locally to {self.EVENT_DATA_PATH}"
             )
             self._write_event_data(web_event_df)
-            # label for return data
+            # common label to update EVENT_DATA property with
             event_df = web_event_df
         else:
             # otherwise, event data file already exists.
@@ -117,8 +119,6 @@ class UFCLinks:
             with open(self.FIGHT_LINKS_PICKLE_PATH, "rb") as event_fight_dict:
                 prev_fight_links = pickle.load(event_fight_dict)
                 self.FIGHT_LINKS = prev_fight_links
-
-        return event_df
 
     def _scrape_all_events(self) -> pd.DataFrame:
         # reads all events from all_events_url column and
@@ -174,6 +174,7 @@ class UFCLinks:
 
     # given list of event links, gets all links to fights for that event and
     # stores in dictionary using event link as key
+    # not sure why this uses custom print progress instead of tqdm
     def _make_link_dict(self, event_links: list[str]) -> dict[str, str]:
 
         num_events = len(event_links)
@@ -238,7 +239,6 @@ class FightDataScraper:
         # when fight scraper initiated, update/load event links.
         self.events = UFCLinks()
         self.events.get_fight_links()
-        #
         self.fight_data = self._load_local_fight_data()
 
     def _load_local_fight_data(self) -> None:
@@ -366,9 +366,22 @@ class FightDataScraper:
     #############
     # parsing fighter names/results here
 
-    # this could be static method. this class could be a module. problems for later.
+    # given soup of fight link, parse fighter data to dict
+    def _get_fighters(self, fight_soup: BeautifulSoup) -> dict:
+        fighters = {}
+
+        r_raw, b_raw = fight_soup.find_all("div", {"class": "b-fight-details__person"})
+
+        r = self._get_fighter(r_raw)
+        b = self._get_fighter(b_raw)
+
+        fighters = add_prefix_label(r, "R") | add_prefix_label(b, "B")
+
+        return fighters
+
     # given single "b-fight-details__person" element, get name, link and result.
-    def _get_fighter(self, fighter_raw: BeautifulSoup) -> dict:
+    @staticmethod
+    def _get_fighter(fighter_raw: BeautifulSoup) -> dict:
         name = fighter_raw.a.text.strip().upper()
         link = fighter_raw.a.get("href")
         id = link.split("/")[-1]
@@ -383,77 +396,27 @@ class FightDataScraper:
 
         return fighter
 
-    # given soup of fight link, parse fighter data to dict
-    def _get_fighters(self, fight_soup: BeautifulSoup) -> dict:
-        fighters = {}
-
-        r_raw, b_raw = fight_soup.find_all("div", {"class": "b-fight-details__person"})
-
-        r = self._get_fighter(r_raw)
-        b = self._get_fighter(b_raw)
-
-        fighters = add_prefix_label(r, "R") | add_prefix_label(b, "B")
-
-        return fighters
-
     #####
 
     ########
     # scraping fight attributes (everything in the the non-tabular box) and all associated routines HERE
 
-    # fight name might say HEAVYWEIGHT BOUT, or UFC TITLE HEAVYWEIGHT BOUT
-    # helper function picks out the word with 'weight' in it
-    # expects string to already be stripped/capitalized/seperated by spaces
-    @staticmethod
-    def _parse_weightclass(fight_name):
-        for word in fight_name.split(" "):
-            if "WEIGHT" in word:
-                return word
-            else:
-                continue
-        # no word with "weight" in fight name
-        return "WEIGHTCLASS PARSING ERROR"
+    def _get_fight_attr(self, fight_soup: BeautifulSoup) -> Dict:
+        attr_raw = fight_soup.find("div", {"class": "b-fight-details__fight"})
+        fight_name = attr_raw.i.text.strip().upper()
+        weight = self._parse_weightclass(fight_name)
 
-    # couple of cases here because of changes in UFC methodology that i'm merging together.
-    # current UFC awards FOTN and performance bonuses for best finishes
-    # used to award KOTN and SOTN specficially and icons indicating these are still
-    # in data. i'm gonna record them all as equivalent performance bonuses
-    # because i don't feel like distinguishing between them
-    # all of these are are just marked by embedded images so this check is super hardcoded
-    # based on the name of the embedded images
-    # static
-    @staticmethod
-    def _is_perf_bonus(attr_soup: BeautifulSoup) -> bool:
-        for img in attr_soup.i.find_all("img"):
-            src = img.get("src")
-            if (
-                ("ko.png" in src)
-                or ("perf.png" in src)
-                or ("fight.png" in src)
-                or ("sub.png" in src)
-            ):
-                return True
-        # otherwise false
-        return False
+        # detecting title fights by the word "TITLE" in fight name
+        # could also do this by looking for belt icon/css tag
+        title_fight = "TITLE" in fight_name
+        perf_bonus = self._is_perf_bonus(attr_raw)
 
-    # static
-    # this function might be useful other places, might generalize
-    @staticmethod
-    def _parse_attr(p_soup: BeautifulSoup) -> dict:
-        # each top level i tag in this p block is one attr
-        attr_dict = {}
-        for i_raw in p_soup.findAll("i", recursive=False):
-            # smash (like khamzat) together, then split at :
-            attr = " ".join(i_raw.stripped_strings).upper().split(": ")
-            attr_lbl = attr[0]
-
-            # case to handle blank attributes
-            # inspired by blank referee on this page that exploded this
-            # http://ufcstats.com/fight-details/6fa2dae90bda4742
-
-            attr_txt = "" if len(attr) == 1 else attr[1]
-
-            attr_dict[attr_lbl] = attr_txt
+        # initialize attr_dict with attr content then manually add
+        # weight class, title fight and performance bonus flags
+        attr_dict = self._get_attr_content(attr_raw)
+        attr_dict["WEIGHT_CLASS"] = weight
+        attr_dict["TITLE_FIGHT"] = title_fight
+        attr_dict["PERF_BONUS"] = perf_bonus
 
         return attr_dict
 
@@ -477,43 +440,134 @@ class FightDataScraper:
 
         return attr_dict
 
-    def _get_fight_attr(self, fight_soup: BeautifulSoup) -> Dict:
-        attr_raw = fight_soup.find("div", {"class": "b-fight-details__fight"})
-        fight_name = attr_raw.i.text.strip().upper()
-        weight = self._parse_weightclass(fight_name)
+    # this function might be useful other places, might generalize
+    @staticmethod
+    def _parse_attr(p_soup: BeautifulSoup) -> dict:
+        # each top level i tag in this p block is one attr
+        attr_dict = {}
+        for i_raw in p_soup.findAll("i", recursive=False):
+            # smash (like khamzat) together, then split at :
+            attr = " ".join(i_raw.stripped_strings).upper().split(": ")
+            attr_lbl = attr[0]
 
-        # detecting title fights by the word "TITLE" in fight name
-        # could also do this by looking for belt icon/css tag
-        title_fight = "TITLE" in fight_name
-        perf_bonus = self._is_perf_bonus(attr_raw)
+            # case to handle blank attributes
+            # inspired by blank referee on this page that exploded this
+            # http://ufcstats.com/fight-details/6fa2dae90bda4742
 
-        # initialize attr_dict with attr content then manually add
-        # weight class, title fight and performance bonus flags
-        attr_dict = self._get_attr_content(attr_raw)
-        attr_dict["WEIGHT_CLASS"] = weight
-        attr_dict["TITLE_FIGHT"] = title_fight
-        attr_dict["PERF_BONUS"] = perf_bonus
+            attr_txt = "" if len(attr) == 1 else attr[1]
+
+            attr_dict[attr_lbl] = attr_txt
 
         return attr_dict
 
+    # fight name might say HEAVYWEIGHT BOUT, or UFC TITLE HEAVYWEIGHT BOUT
+    # helper function picks out the word with 'weight' in it
+    # expects string to already be stripped/capitalized/seperated by spaces
+    @staticmethod
+    def _parse_weightclass(fight_name):
+        for word in fight_name.split(" "):
+            if "WEIGHT" in word:
+                return word
+            else:
+                continue
+        # no word with "weight" in fight name
+        return "WEIGHTCLASS PARSING ERROR"
+
+    # couple of cases here because of changes in UFC methodology that i'm merging together.
+    # current UFC awards FOTN and performance bonuses for best finishes
+    # used to award KOTN and SOTN specficially and icons indicating these are still
+    # in data. i'm gonna record them all as equivalent performance bonuses
+    # because i don't feel like distinguishing between them
+    # all of these are are just marked by embedded images so this check is super hardcoded
+    # based on the name of the embedded images
+    @staticmethod
+    def _is_perf_bonus(attr_soup: BeautifulSoup) -> bool:
+        for img in attr_soup.i.find_all("img"):
+            src = img.get("src")
+            if (
+                ("ko.png" in src)
+                or ("perf.png" in src)
+                or ("fight.png" in src)
+                or ("sub.png" in src)
+            ):
+                return True
+        # otherwise false
+        return False
+
     ###########################
+
+    # smashing the rows of all fights together should induce all round labels
+    # for all fights.
+    # using default arg to hardcode headers. could add header parsing logic but lazy
+    # table-index: what table to look for. set to 0 for other stats, 2 for strike stats
+    # (parses initial index as total stats, then expects round by round table next)
+
+    def _get_fight_table_stats(
+        self,
+        fight_soup: BeautifulSoup,
+        header_lbls: list = web_fight_cols,
+        omit_lbls: Iterable = (
+            "FIGHTER",
+            "SIG_STR",
+            "SIG_STR_PCT",
+        ),  # omit these by default, redundant
+        table_index: int = 0,
+    ) -> Dict:
+
+        tables = fight_soup.findAll("tbody")
+
+        tot_soup = tables[table_index]
+
+        # initiate dict with total stats
+
+        stats_dict = self._unpack_table_row(
+            tot_soup.find("tr"), header_lbls=header_lbls, omit_lbls=omit_lbls
+        )
+
+        stats_dict = add_suffix_label(stats_dict, "TOT")
+
+        # get per round stats (second table/tbody)
+
+        round_soup = tables[table_index + 1]
+        round_stats_dict = self._parse_round_table(
+            round_soup, header_lbls, omit_lbls=omit_lbls
+        )
+        stats_dict.update(round_stats_dict)
+
+        return stats_dict
+
+    def _parse_round_table(
+        self,
+        round_tbody_soup: BeautifulSoup,
+        header_lbls: List,
+        omit_lbls: Iterable = (),
+    ) -> Dict:
+        # heuristic here is given the tbody of a round by round stat table:
+        # - look for the text elements with the word "Round" in them
+        # - parse the first tr element after each such text
+
+        all_round_stats = {}
+        round_text_elts = round_tbody_soup.findAll(string=re.compile("Round"))
+
+        # counter for round number
+        round_num = 0
+
+        for elt in round_text_elts:
+            round_num += 1
+            round_stats_raw = elt.find_next("tr")
+            round_stats_dict = self._unpack_table_row(
+                round_stats_raw, header_lbls, omit_lbls
+            )
+            # add round number to labels
+            round_stats_dict = add_suffix_label(round_stats_dict, f"R{round_num}")
+            all_round_stats.update(round_stats_dict)
+
+        return all_round_stats
 
     # helper function: each <tr> element of fight table contains two rows semantically.
     # data for each fighter is stacked on top of each other within the same cell
     # unsure if this was done intentionally to make it harder to scrape or if it's just
     # dubious formatting. but we need to unpack it.
-
-    @staticmethod
-    def _unpack_table_cell(td_soup: BeautifulSoup, lbl: str) -> Dict:
-
-        # this really depends on exactly two elements
-        # containing strings being present in the cell
-        # and may explode otherwise
-        r_stat, b_stat = td_soup.stripped_strings
-
-        cell_dict = {f"R_{lbl}": r_stat, f"B_{lbl}": b_stat}
-
-        return cell_dict
 
     def _unpack_table_row(
         self, tr_soup: BeautifulSoup, header_lbls: List, omit_lbls: Iterable = ()
@@ -557,71 +611,14 @@ class FightDataScraper:
 
         return row_dict
 
-    def _parse_round_table(
-        self,
-        round_tbody_soup: BeautifulSoup,
-        header_lbls: List,
-        omit_lbls: Iterable = (),
-    ) -> Dict:
-        # heuristic here is given the tbody of a round by round stat table:
-        # - look for the text elements with the word "Round" in them
-        # - parse the first tr element after each such text
+    @staticmethod
+    def _unpack_table_cell(td_soup: BeautifulSoup, lbl: str) -> Dict:
 
-        all_round_stats = {}
-        round_text_elts = round_tbody_soup.findAll(string=re.compile("Round"))
+        # this really depends on exactly two elements
+        # containing strings being present in the cell
+        # and may explode otherwise
+        r_stat, b_stat = td_soup.stripped_strings
 
-        # counter for round number
-        round_num = 0
+        cell_dict = {f"R_{lbl}": r_stat, f"B_{lbl}": b_stat}
 
-        for elt in round_text_elts:
-            round_num += 1
-            round_stats_raw = elt.find_next("tr")
-            round_stats_dict = self._unpack_table_row(
-                round_stats_raw, header_lbls, omit_lbls
-            )
-            # add round number to labels
-            round_stats_dict = add_suffix_label(round_stats_dict, f"R{round_num}")
-            all_round_stats.update(round_stats_dict)
-
-        return all_round_stats
-
-    # smashing the rows of all fights together should induce all round labels
-    # for all fights.
-    # but too lazy.
-    # using default arg to hardcode headers. could add header parsing logic.
-    # table-index: what table to look for. set to 0 for other stats, 2 for strike stats
-    # (parses initial index as total stats, then expects round by round table next)
-
-    def _get_fight_table_stats(
-        self,
-        fight_soup: BeautifulSoup,
-        header_lbls: list = web_fight_cols,
-        omit_lbls: Iterable = (
-            "FIGHTER",
-            "SIG_STR",
-            "SIG_STR_PCT",
-        ),  # omit these by default, redundant
-        table_index: int = 0,
-    ) -> Dict:
-
-        tables = fight_soup.findAll("tbody")
-
-        tot_soup = tables[table_index]
-
-        # initiate dict with total stats
-
-        stats_dict = self._unpack_table_row(
-            tot_soup.find("tr"), header_lbls=header_lbls, omit_lbls=omit_lbls
-        )
-
-        stats_dict = add_suffix_label(stats_dict, "TOT")
-
-        # get per round stats (second table/tbody)
-
-        round_soup = tables[table_index + 1]
-        round_stats_dict = self._parse_round_table(
-            round_soup, header_lbls, omit_lbls=omit_lbls
-        )
-        stats_dict.update(round_stats_dict)
-
-        return stats_dict
+        return cell_dict
