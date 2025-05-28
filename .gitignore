@@ -1,16 +1,12 @@
 #Byte-compiled / optimized / DLL files
-__pycache__/
+**/__pycache__/
 
 # VS Code
-.vscode/
+**/.vscode/
 
 # Jupyter NB Checkpoints
-.ipynb_checkpoints/
+**/.ipynb_checkpoints/
 
 #dont upload pickle or data files
-.pickle
-.csv
-
-# manually ignoring these because they were tracked before i did the gitignore.
-data/event_data.csv
-data/raw_fight_data.csv
+**/*.pickle
+**/*.csv
