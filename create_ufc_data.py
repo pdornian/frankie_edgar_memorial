@@ -1,6 +1,6 @@
 import time
 # from src.ufctools.legacy.preprocess import Preprocessor
-from src.ufctools.scraper import FightDataScraper
+from src.ufctools.scraping import FightDataScraper
 # from src.ufctools.legacy.scrape_fighter_details import FighterDetailsScraper
 
 time_start = time.time()
