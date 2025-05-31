@@ -7,13 +7,14 @@ BASE_PATH = Path(os.getcwd()) / "data"
 FIGHT_LINKS_PICKLE = BASE_PATH / "fight_links.pickle"
 RAW_NEW_FIGHT_DATA_PATH = BASE_PATH / "temp_raw_fight_data.csv"
 RAW_FIGHT_DATA_PATH = BASE_PATH / "raw_fight_data.csv"
+RAW_FIGHTER_DATA_PATH = BASE_PATH / "raw_fighter_details.csv"
 EVENT_DATA_PATH = BASE_PATH / "event_data.csv"
 
+# ###URLS###
+FIGHTER_DETAIL_BASE_URL = "http://ufcstats.com/fighter-details/"
+
 # haven't used this stuff yet -- will probably change
-SCRAPED_FIGHTER_DATA_DICT_PICKLE = BASE_PATH / "scraped_fighter_data_dict.pickle"
-PAST_FIGHTER_LINKS_PICKLE = BASE_PATH / "past_fighter_links.pickle"
 PREPROCESSED_DATA_PATH = BASE_PATH / "preprocessed_data.csv"
-FIGHTER_DETAILS_DATA_PATH = BASE_PATH / "raw_fighter_details.csv"
 UFC_DATA_PATH = BASE_PATH / "data.csv"
 
 

@@ -1,29 +1,31 @@
-from io import StringIO
 import os
 import pickle
 import re
-from typing import Dict, List, Iterable
+from datetime import date
+from io import StringIO
+from typing import Dict, Iterable, List, Tuple
 
-from bs4 import BeautifulSoup
 import pandas as pd
-from tqdm import tqdm
+from bs4 import BeautifulSoup
+from tqdm.auto import tqdm
 
 # hardcoded headers/filepaths
 from src.ufctools.filepaths_and_schema import (
-    FIGHT_LINKS_PICKLE,
-    RAW_NEW_FIGHT_DATA_PATH,
-    RAW_FIGHT_DATA_PATH,
     EVENT_DATA_PATH,
+    FIGHT_LINKS_PICKLE,
+    FIGHTER_DETAIL_BASE_URL,
+    RAW_FIGHT_DATA_PATH,
+    RAW_FIGHTER_DATA_PATH,
+    RAW_NEW_FIGHT_DATA_PATH,
+    event_cols,
     web_fight_cols,
     web_strike_cols,
-    event_cols,
 )
-
 from src.ufctools.utils import (
-    make_soup,
-    print_progress,
     add_prefix_label,
     add_suffix_label,
+    make_soup,
+    print_progress,
 )
 
 
@@ -239,6 +241,7 @@ class FightDataScraper:
     def __init__(self):
         self.NEW_FIGHTS_DATA_PATH = RAW_NEW_FIGHT_DATA_PATH
         self.FIGHT_DATA_PATH = RAW_FIGHT_DATA_PATH
+        self.FIGHTER_DATA_PATH = RAW_FIGHTER_DATA_PATH
         # when fight scraper initiated, update/load event links.
         self.events = UFCLinks()
         self.events.get_fight_links()
@@ -246,12 +249,13 @@ class FightDataScraper:
         self.fight_data = self._load_local_fight_data()
         # load any existing unprocessed data
         self.temp_fight_data = self._load_temp_fight_data()
+        # initiating this as none for now
+        # WRITE FUNCTION TO LOAD LOCAL DATA ON INITATE
+        self.fighter_data = None
 
     def _load_temp_fight_data(self) -> None:
         if self.NEW_FIGHTS_DATA_PATH.exists():
-            print(
-                f"Reading unprocessed local fight data from {self.NEW_FIGHTS_DATA_PATH}"
-            )
+            print(f"Reading temp raw local fight data from {self.NEW_FIGHTS_DATA_PATH}")
             local_fight_df = pd.read_csv(
                 self.NEW_FIGHTS_DATA_PATH,
                 sep=";",
@@ -263,7 +267,7 @@ class FightDataScraper:
 
     def _load_local_fight_data(self) -> None:
         if self.FIGHT_DATA_PATH.exists():
-            print(f"Reading local fight data from {self.FIGHT_DATA_PATH}")
+            print(f"Reading local raw fight data from {self.FIGHT_DATA_PATH}")
             local_fight_df = pd.read_csv(
                 self.FIGHT_DATA_PATH,
                 sep=";",
@@ -272,6 +276,28 @@ class FightDataScraper:
             return local_fight_df
         else:
             return None
+
+    # update fighter data with all fighters present in fight data.
+    # for now, always forces refresh, don't wanna build update logic rn
+    # DON'T CALL THIS WITHOUT FIGHT DATA
+    def update_fighter_data(self, force_refresh=True):
+
+        if self.fight_data is None:
+            print(
+                "No event data found. Call scrape_new_fights and generate event data before updating fighter data"
+            )
+            return None
+
+        if force_refresh:
+            unique_fighter_ids = set(
+                list(self.fight_data["R_FIGHTER_ID"])
+                + list(self.fight_data["B_FIGHTER_ID"])
+            )
+            fighters_df = scrape_from_fighter_ids(
+                unique_fighter_ids, local_save=True, filepath=self.FIGHTER_DATA_PATH
+            )
+            self.fighter_data = fighters_df
+            return fighters_df
 
     # master function for scraping all missing fight data
 
@@ -668,3 +694,98 @@ class FightDataScraper:
         cell_dict = {f"R_{lbl}": r_stat, f"B_{lbl}": b_stat}
 
         return cell_dict
+
+
+# not making this a class because i'm tired of them and this is dependent on the ID list passed to it
+# could unify this with FightScraper.scrape_event_fights because it's basically the same.
+def scrape_from_fighter_ids(
+    fighter_ids: Iterable,
+    local_save: bool = True,
+    filepath: str = RAW_FIGHTER_DATA_PATH,
+) -> pd.DataFrame:
+    fighter_data = []
+
+    # this doesn't seem to actually be printed, but am unsure
+    print(f"Getting data for {len(fighter_ids)} fighters.")
+    for id in tqdm(fighter_ids):
+        try:
+            fighter_data.append(get_fighter_stats(id))
+        except Exception as e:
+            print(f"error processing {FIGHTER_DETAIL_BASE_URL + id}: {e}")
+
+    fighter_df = pd.DataFrame.from_records(fighter_data, index="FIGHTER_ID")
+
+    if local_save:
+        print(f"Saving fighter data to {filepath}")
+        fighter_df.to_csv(filepath, sep=";")
+
+    return fighter_df
+
+
+def get_fighter_stats(fighter_id: str) -> Dict:
+    # including scrape date for the hell of it
+    # inconsistent with how i did fighter data, but might be used to check
+    # for changes in stats eventually.
+
+    scrape_date = date.today()
+    fighter_url = FIGHTER_DETAIL_BASE_URL + fighter_id
+    fighter_soup = make_soup(fighter_url)
+
+    f_win, f_loss, f_draw, f_nc = _get_fighter_rec(fighter_soup)
+    f_name = (
+        fighter_soup.find("span", {"class": "b-content__title-highlight"})
+        .text.strip()
+        .upper()
+    )
+
+    # initiate fighter dict
+    f_stats = {
+        "FIGHTER_ID": fighter_id,
+        "FIGHTER_LINK": fighter_url,
+        "SCRAPE_DATE": scrape_date,
+        "FIGHTER": f_name,
+        "WIN": f_win,
+        "LOSS": f_loss,
+        "DRAW": f_draw,
+        "NC": f_nc,
+    }
+
+    f_attrs = _get_fighter_attr(fighter_soup)
+    f_stats.update(f_attrs)
+
+    return f_stats
+
+
+# could generalize something to shove this together wtih _parse_attr
+def _get_fighter_attr(fighter_soup: BeautifulSoup) -> Dict:
+    # heuristic -- just grab all the list items inside this div
+    attrs_raw = fighter_soup.find("div", {"class": "b-fight-details"}).find_all("li")
+    attr_dict = {}
+    # if there's multiple colons in a list item this is gonna explode
+    for li in attrs_raw:
+        attr = "".join(li.stripped_strings).upper().split(":")
+        # remove punctuation and spaces from labels
+        attr_lbl = attr[0].replace(" ", "_").replace(".", "")
+        # edge case for blank stats
+        attr_txt = "" if len(attr) == 1 else attr[1]
+        # edge case for blank labels -- if there's no label, don't record it.
+        if attr_lbl != "":
+            attr_dict[attr_lbl] = attr_txt
+
+    return attr_dict
+
+
+def _get_fighter_rec(fighter_soup: BeautifulSoup) -> Tuple[int]:
+    rec_str = fighter_soup.find(
+        "span", {"class": "b-content__title-record"}
+    ).text.strip()
+    # silly regex goes here. not verifying whitespace
+    rec_format = re.compile(r".*?(\d+)-(\d+)-(\d+)(?:\s*\((\d+)\s?NC\))?")
+    rec_match = rec_format.match(rec_str)
+    if rec_match:
+        # default arg mapped to "0" handles case where no NC's listed
+        w, l, d, nc = (int(dig) for dig in rec_match.groups("0"))
+    else:
+        print("Error parsing fighter record.")
+
+    return w, l, d, nc
