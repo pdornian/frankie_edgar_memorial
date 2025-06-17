@@ -244,24 +244,36 @@ class FightDataScraper:
         self.FIGHTER_DATA_PATH = RAW_FIGHTER_DATA_PATH
         # when fight scraper initiated, update/load event links.
         self.events = UFCLinks()
-        self.events.get_fight_links()
         # load any existing processed data
         self.fight_data = self._load_local_fight_data()
         # load any existing unprocessed data
         self.temp_fight_data = self._load_temp_fight_data()
         # initiating this as none for now
         # WRITE FUNCTION TO LOAD LOCAL DATA ON INITATE
-        self.fighter_data = None
+        self.fighter_data = self._load_fighter_data()
+
+    def _load_fighter_data(self) -> None:
+        if self.FIGHTER_DATA_PATH.exists():
+            print(f"Reading local fighter data from {self.NEW_FIGHTS_DATA_PATH}")
+            fighter_df = pd.read_csv(
+                self.FIGHTER_DATA_PATH,
+                sep=";",
+                index_col="FIGHTER_ID",
+                parse_dates=["SCRAPE_DATE"]
+            )
+            return fighter_df
+        else:
+            return None
 
     def _load_temp_fight_data(self) -> None:
         if self.NEW_FIGHTS_DATA_PATH.exists():
             print(f"Reading temp raw local fight data from {self.NEW_FIGHTS_DATA_PATH}")
-            local_fight_df = pd.read_csv(
+            temp_fight_df = pd.read_csv(
                 self.NEW_FIGHTS_DATA_PATH,
                 sep=";",
                 index_col="FIGHT_ID",
             )
-            return local_fight_df
+            return temp_fight_df
         else:
             return None
 
@@ -302,6 +314,8 @@ class FightDataScraper:
     # master function for scraping all missing fight data
 
     def scrape_new_fights(self, force_refresh=False, itercap=1000) -> pd.DataFrame:
+        # get latest fight links
+        self.events.get_fight_links()
 
         events_df = self.events.EVENT_DATA
 
