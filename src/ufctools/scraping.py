@@ -115,7 +115,7 @@ class UFCLinks:
                 event_df = local_event_df
 
         # set event data property
-        self.EVENT_DATA = event_df
+        self.EVENT_DATA = event_df.sort_values('DATE', ascending=False)
 
         # load fight links if they already exist.
         if self.FIGHT_LINKS_PICKLE_PATH.exists():
@@ -254,12 +254,12 @@ class FightDataScraper:
 
     def _load_fighter_data(self) -> None:
         if self.FIGHTER_DATA_PATH.exists():
-            print(f"Reading local fighter data from {self.NEW_FIGHTS_DATA_PATH}")
+            print(f"Reading local fighter data from {self.FIGHTER_DATA_PATH}")
             fighter_df = pd.read_csv(
                 self.FIGHTER_DATA_PATH,
                 sep=";",
                 index_col="FIGHTER_ID",
-                parse_dates=["SCRAPE_DATE"]
+                parse_dates=["SCRAPE_DATE"],
             )
             return fighter_df
         else:
@@ -272,6 +272,7 @@ class FightDataScraper:
                 self.NEW_FIGHTS_DATA_PATH,
                 sep=";",
                 index_col="FIGHT_ID",
+                parse_dates=["DATE"],
             )
             return temp_fight_df
         else:
@@ -284,6 +285,7 @@ class FightDataScraper:
                 self.FIGHT_DATA_PATH,
                 sep=";",
                 index_col="FIGHT_ID",
+                parse_dates=["DATE"],
             )
             return local_fight_df
         else:
@@ -327,7 +329,7 @@ class FightDataScraper:
             if self.FIGHT_DATA_PATH.exists():
                 os.remove(self.FIGHT_DATA_PATH)
 
-        # get links to all events with FIGHT_DATA_SCRAPED == FALSE
+        # get all events with FIGHT_DATA_SCRAPED == FALSE
         unscraped_events = events_df[~events_df["FIGHT_DATA_SCRAPED"]]
 
         # EXIT HERE IF NOTHING TO SCRAPE
@@ -358,10 +360,11 @@ class FightDataScraper:
         # update local event saved data file
         self.events._write_event_data(events_df)
 
-        # save scraped data to temp file
+        # update temp data
         # BEFORE MERGING TO EXISTING DATA (just in case)
         new_fights_df = pd.concat(new_fight_data)
         new_fights_df.to_csv(self.NEW_FIGHTS_DATA_PATH, sep=";")
+        self.temp_fight_data = new_fights_df
 
         self._update_fight_data()
         return new_fights_df
@@ -385,8 +388,13 @@ class FightDataScraper:
         return None
 
     # given an event link, scrape all fights to dataframe
+    # after the fact adjustment: merge in event ID and date from event data
+    # (date used later as reference for triggering fighter stat update, event ID just convenient)
+    # (probably not optimal)
     def scrape_event_fights(self, event_link: str) -> pd.DataFrame:
         event_fight_data = []
+        event_id = event_link.split("/")[-1]
+        event_date = self.events.EVENT_DATA.loc[event_id]["DATE"]
         event_fight_links = self.events.FIGHT_LINKS[event_link]
         for fight_link in event_fight_links:
             try:
@@ -395,6 +403,9 @@ class FightDataScraper:
                 print(f"error processing {fight_link}: {e}")
 
         event_fights_df = pd.DataFrame.from_records(event_fight_data, index="FIGHT_ID")
+        event_fights_df["EVENT_ID"] = event_id
+        event_fights_df["DATE"] = event_date
+
         return event_fights_df
 
     def get_fight_stats(self, fight_link: str) -> dict:
