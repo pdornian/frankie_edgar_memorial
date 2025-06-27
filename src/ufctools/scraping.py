@@ -1,7 +1,7 @@
 import os
 import pickle
 import re
-from datetime import date
+from datetime import date, datetime
 from io import StringIO
 from typing import Dict, Iterable, List, Tuple
 
@@ -115,7 +115,7 @@ class UFCLinks:
                 event_df = local_event_df
 
         # set event data property
-        self.EVENT_DATA = event_df.sort_values('DATE', ascending=False)
+        self.EVENT_DATA = event_df.sort_values("DATE", ascending=False)
 
         # load fight links if they already exist.
         if self.FIGHT_LINKS_PICKLE_PATH.exists():
@@ -259,7 +259,7 @@ class FightDataScraper:
                 self.FIGHTER_DATA_PATH,
                 sep=";",
                 index_col="FIGHTER_ID",
-                parse_dates=["SCRAPE_DATE"],
+                parse_dates=["AS_OF_DATE"],
             )
             return fighter_df
         else:
@@ -286,15 +286,18 @@ class FightDataScraper:
                 sep=";",
                 index_col="FIGHT_ID",
                 parse_dates=["DATE"],
+                low_memory=False,
             )
             return local_fight_df
         else:
             return None
 
     # update fighter data with all fighters present in fight data.
-    # for now, always forces refresh, don't wanna build update logic rn
     # DON'T CALL THIS WITHOUT FIGHT DATA
-    def update_fighter_data(self, force_refresh=True):
+    # resaves fighter data even if it doesn't update which is silly but don't wanna fix rn.
+    def update_fighter_data(
+        self, force_refresh: bool = False, optional_date: datetime = None
+    ):
 
         if self.fight_data is None:
             print(
@@ -302,16 +305,65 @@ class FightDataScraper:
             )
             return None
 
-        if force_refresh:
+        # generate from all fights in fight data if force refresh or if fighter data file doesn't exist.
+        if force_refresh or self.fighter_data is None:
+            print("Scraping all fighter data.")
             unique_fighter_ids = set(
                 list(self.fight_data["R_FIGHTER_ID"])
                 + list(self.fight_data["B_FIGHTER_ID"])
             )
             fighters_df = scrape_from_fighter_ids(
-                unique_fighter_ids, local_save=True, filepath=self.FIGHTER_DATA_PATH
+                unique_fighter_ids, local_save=False, filepath=self.FIGHTER_DATA_PATH
             )
-            self.fighter_data = fighters_df
+
+        else:
+            # this is constant across rows
+            as_of_date = self.fighter_data.iloc[0]["AS_OF_DATE"]
+            # if date passed, set as that
+            # otherwise, use as_of date.
+            min_date = optional_date if optional_date else as_of_date
+            fighters_df = self.update_fighters_by_date(min_date)
+
+        self.fighter_data = fighters_df
+        print(f"Saving fighter data to {self.FIGHTER_DATA_PATH}")
+        self.fighter_data.to_csv(self.FIGHTER_DATA_PATH, sep=";")
+        return fighters_df
+
+    def update_fighters_by_date(self, date):
+        # given date, update fighter data by cross referencing
+        # fight data, looking at all records from that date onward
+        # and refreshing existing fighters occuring in those records
+        # and adding any new entries.
+        fighters_df = self.fighter_data.copy()
+        fight_df = self.fight_data
+
+        print(f"Refreshing fighter data with fights from {date} onwards.")
+
+        new_fights_df = fight_df[fight_df["DATE"] >= date]
+
+        # if this is empty, just terminate
+        if new_fights_df.shape[0] == 0:
+            print(f"No fights since {date}")
             return fighters_df
+        unique_fighter_ids = set(
+            list(new_fights_df["R_FIGHTER_ID"]) + list(new_fights_df["B_FIGHTER_ID"])
+        )
+
+        # remove existing records from this set
+        fighters_df = fighters_df[~fighters_df.index.isin(unique_fighter_ids)]
+        # get new data for these IDs
+        new_fighters_df = scrape_from_fighter_ids(
+            unique_fighter_ids, local_save=False, filepath=self.FIGHTER_DATA_PATH
+        )
+        # concat new data
+        fighters_df = pd.concat([new_fighters_df, fighters_df])
+
+        # casting for ??? reasons
+        fighters_df["AS_OF_DATE"] = pd.to_datetime(fighters_df["AS_OF_DATE"])
+        # update as of date for all records to latest value
+        fighters_df["AS_OF_DATE"] = fighters_df["AS_OF_DATE"].max()
+
+        return fighters_df
 
     # master function for scraping all missing fight data
 
@@ -725,7 +777,7 @@ class FightDataScraper:
 # could unify this with FightScraper.scrape_event_fights because it's basically the same.
 def scrape_from_fighter_ids(
     fighter_ids: Iterable,
-    local_save: bool = True,
+    local_save: bool = False,
     filepath: str = RAW_FIGHTER_DATA_PATH,
 ) -> pd.DataFrame:
     fighter_data = []
@@ -767,7 +819,7 @@ def get_fighter_stats(fighter_id: str) -> Dict:
     f_stats = {
         "FIGHTER_ID": fighter_id,
         "FIGHTER_LINK": fighter_url,
-        "SCRAPE_DATE": scrape_date,
+        "AS_OF_DATE": scrape_date,
         "FIGHTER": f_name,
         "WIN": f_win,
         "LOSS": f_loss,
