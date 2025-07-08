@@ -11,6 +11,7 @@ RAW_FIGHTER_DATA_PATH = BASE_PATH / "raw_fighter_details.csv"
 EVENT_DATA_PATH = BASE_PATH / "event_data.csv"
 
 PROCESSED_FIGHTER_DATA_PATH = BASE_PATH / "processed_fighter_details.csv"
+PROCESSED_FIGHT_DATA_PATH = BASE_PATH / "processed_fight_details.csv"
 
 # ###URLS###
 FIGHTER_DETAIL_BASE_URL = "http://ufcstats.com/fighter-details/"

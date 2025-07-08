@@ -614,13 +614,20 @@ class FightDataScraper:
     # expects string to already be stripped/capitalized/seperated by spaces
     @staticmethod
     def _parse_weightclass(fight_name):
-        for word in fight_name.split(" "):
-            if "WEIGHT" in word:
-                return word
-            else:
-                continue
-        # no word with "weight" in fight name
-        return "WEIGHTCLASS PARSING ERROR"
+        # edge cases: OPEN WEIGHT and CATCH WEIGHT logged with spaces in them.
+        if "OPEN" in fight_name:
+            weight = "OPENWEIGHT"
+        elif "CATCH" in fight_name:
+            weight = "CATCHWEIGHT"
+        elif "WEIGHT" in fight_name:
+            for word in fight_name.split(" "):
+                if "WEIGHT" in word:
+                    weight = word
+        else:
+            # no weight class listed. either missing data, or early tournament
+            # just map this to openweight for now.
+            weight = "OPENWEIGHT"
+        return weight
 
     # couple of cases here because of changes in UFC methodology that i'm merging together.
     # current UFC awards FOTN and performance bonuses for best finishes

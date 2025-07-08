@@ -1,7 +1,11 @@
 # functions that act on scraped data/scraper object to process data to be ML ready.
 import pandas as pd
+
 # from src.ufctools.scraping import FightDataScraper
-from src.ufctools.filepaths_and_schema import PROCESSED_FIGHTER_DATA_PATH
+from src.ufctools.filepaths_and_schema import (
+    PROCESSED_FIGHTER_DATA_PATH,
+    PROCESSED_FIGHT_DATA_PATH,
+)
 
 
 # process scraped fighter data
@@ -22,6 +26,9 @@ def process_fighter_data(
 
     for col in pct_cols:
         raw_df[col] = _parse_pct_col(raw_df[col])
+
+    if save_local:
+        raw_df.to_csv(save_dest, sep=";")
 
     return raw_df
 
@@ -80,3 +87,34 @@ def _parse_pct_col(col: pd.Series) -> pd.Series:
     col = col.str.replace("%", "").astype(float) / 100
 
     return col
+
+
+############################################################################################
+# parse/process fight data
+
+
+def process_fight_data(
+    fight_df, save_local=True, save_dest=PROCESSED_FIGHT_DATA_PATH
+):
+    # copy to not modify inplace -- leads to unexpected behaviour.
+    raw_df = fight_df.copy()
+    # check for expected columns?
+    # time string to int
+    raw_df["TIME"] = raw_df.map(_convert_timestr_to_sec)
+    # some missing ref data (100/8200)-- you'd think this would be for old fights,
+    # but is mostly in modern era
+
+    raw_df['REFEREE'] = raw_df['REFEREE'].fillna('NO REF DATA')
+    # details: not touching this right now
+    # could extract submission details + ref scorecard eventually.
+
+    if save_local:
+        raw_df.to_csv(save_dest, sep=";")
+
+    return raw_df
+
+
+# convert "mm:ss" timestamp (for time of fight end) into elapsed seconds
+def _convert_timestr_to_sec(time: str) -> int:
+    min, sec = time.split(":")
+    return 60 * int(min) + int(sec)
