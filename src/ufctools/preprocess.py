@@ -6,8 +6,10 @@ from src.ufctools.filepaths_and_schema import PROCESSED_FIGHTER_DATA_PATH
 
 # process scraped fighter data
 def process_fighter_data(
-    raw_df, save_local=True, save_dest=PROCESSED_FIGHTER_DATA_PATH
+    fighter_df, save_local=True, save_dest=PROCESSED_FIGHTER_DATA_PATH
 ):
+    # copy to not modify inplace -- leads to unexpected behaviour.
+    raw_df = fighter_df.copy()
     # check for expected columns?
 
     # cols with percent strings
