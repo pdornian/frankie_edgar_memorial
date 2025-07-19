@@ -92,29 +92,98 @@ def _parse_pct_col(col: pd.Series) -> pd.Series:
 ############################################################################################
 # parse/process fight data
 
+land_att_cols = [
+    "ALL_STR",
+    "SIG_STR",
+    "HEAD",
+    "BODY",
+    "LEG",
+    "DISTANCE",
+    "CLINCH",
+    "GROUND",
+]
+
+# generate list of all column names holding "LANDED of ATTEMPTED" data
+# avoid any cols including PCT as name
+
+# these are:
+
+match_pattern = f".*({'|'.join(land_att_cols)})(?!_PCT).*"
+
 
 def process_fight_data(
-    fight_df, save_local=True, save_dest=PROCESSED_FIGHT_DATA_PATH
+    fight_df,
+    land_att_regex=match_pattern,
+    save_local=True,
+    save_dest=PROCESSED_FIGHT_DATA_PATH,
 ):
     # copy to not modify inplace -- leads to unexpected behaviour.
-    raw_df = fight_df.copy()
+    df = fight_df.copy()
     # check for expected columns?
     # time string to int
-    raw_df["TIME"] = raw_df.map(_convert_timestr_to_sec)
+    df["TIME"] = df['TIME'].map(_convert_timestr_to_sec)
     # some missing ref data (100/8200)-- you'd think this would be for old fights,
     # but is mostly in modern era
 
-    raw_df['REFEREE'] = raw_df['REFEREE'].fillna('NO REF DATA')
+    df["REFEREE"] = df["REFEREE"].fillna("NO REF DATA")
     # details: not touching this right now
     # could extract submission details + ref scorecard eventually.
 
-    if save_local:
-        raw_df.to_csv(save_dest, sep=";")
+    # fill string NA's with empty string
+    # this might fuck up any non-string column that got typed as an object, care
+    df.loc[:, df.select_dtypes("object").columns] = df.select_dtypes("object").fillna(
+        ""
+    )
+    # generate land_att col_names from regex match and df cols before feeding into
+    # column processing
+    land_att_col_names = df.filter(regex=land_att_regex).columns
 
-    return raw_df
+    df = _proc_land_attempt_cols(df, land_att_col_names)
+
+    if save_local:
+        df.to_csv(save_dest, sep=";")
+
+    return df
 
 
 # convert "mm:ss" timestamp (for time of fight end) into elapsed seconds
 def _convert_timestr_to_sec(time: str) -> int:
     min, sec = time.split(":")
     return 60 * int(min) + int(sec)
+
+
+# given a dataframe and column name (list of col names?) that stores data strings of LANDED of ATTEMPTED form
+# return dataframe with new columns col_name_landed and col_name_attempted as integers
+# also, drop original col (making this toggleable for troubleshooting)
+
+# mapping empty vals to -1 by default to distenguish them from genuine 0's
+
+
+def _expand_land_attempt_col(col=pd.Series, empty_str_map=-1) -> pd.DataFrame:
+    col_name_land = col.name + "_LANDED"
+    col_name_att = col.name + "_ATTEMPTED"
+    expanded_df = (
+        col.str.split(" of ", expand=True)
+        .rename(columns={0: col_name_land, 1: col_name_att})
+        # awkward case handling from splitting empty string
+        # returning ("", None)
+        .replace("", -1)
+        .fillna(-1)
+        .astype({col_name_land: int, col_name_att: int})
+    )
+    return expanded_df
+
+
+def _proc_land_attempt_cols(
+    df: pd.DataFrame, col_list: list, drop_original_cols: bool = True, copy_data=True
+) -> pd.DataFrame:
+
+    expanded_cols = [_expand_land_attempt_col(df[col_name]) for col_name in col_list]
+    df_list = [df] + expanded_cols
+
+    # just doing concat because index order shouldn't have changed
+    output_df = pd.concat(df_list, axis=1, copy=copy_data)
+
+    if drop_original_cols:
+        output_df = output_df.drop(columns=col_list)
+    return output_df
