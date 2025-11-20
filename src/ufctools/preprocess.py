@@ -28,6 +28,7 @@ def process_fighter_data(
         raw_df[col] = _parse_pct_col(raw_df[col])
 
     if save_local:
+        print(f"Saving to {PROCESSED_FIGHTER_DATA_PATH}")
         raw_df.to_csv(save_dest, sep=";")
 
     return raw_df

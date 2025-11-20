@@ -254,7 +254,7 @@ class FightDataScraper:
 
     def _load_fighter_data(self) -> None:
         if self.FIGHTER_DATA_PATH.exists():
-            print(f"Reading local fighter data from {self.FIGHTER_DATA_PATH}")
+            print(f"Reading local raw fighter data from {self.FIGHTER_DATA_PATH}")
             fighter_df = pd.read_csv(
                 self.FIGHTER_DATA_PATH,
                 sep=";",
@@ -789,7 +789,6 @@ def scrape_from_fighter_ids(
 ) -> pd.DataFrame:
     fighter_data = []
 
-    # this doesn't seem to actually be printed, but am unsure
     print(f"Getting data for {len(fighter_ids)} fighters.")
     for id in tqdm(fighter_ids):
         try:
