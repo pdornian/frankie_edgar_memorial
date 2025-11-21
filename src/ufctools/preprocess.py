@@ -122,7 +122,7 @@ def process_fight_data(
     df = fight_df.copy()
     # check for expected columns?
     # time string to int
-    df["TIME"] = df['TIME'].map(_convert_timestr_to_sec)
+    df["TIME"] = df["TIME"].map(_convert_timestr_to_sec)
     # some missing ref data (100/8200)-- you'd think this would be for old fights,
     # but is mostly in modern era
 
@@ -140,6 +140,7 @@ def process_fight_data(
     land_att_col_names = df.filter(regex=land_att_regex).columns
 
     df = _proc_land_attempt_cols(df, land_att_col_names)
+    df = _proc_ctrl_time(df)
 
     if save_local:
         df.to_csv(save_dest, sep=";")
@@ -147,17 +148,30 @@ def process_fight_data(
     return df
 
 
-# convert "mm:ss" timestamp (for time of fight end) into elapsed seconds
+# convert "mm:ss" timestamp (for time of fight end and control time) into elapsed seconds
 def _convert_timestr_to_sec(time: str) -> int:
     min, sec = time.split(":")
     return 60 * int(min) + int(sec)
+
+
+# taking fight_df, select ctrl columns,
+# replace "" and "--" with "0:-1" (this then converts to -1,
+# distinguishing non-control from rounds not reached)
+# then convert to seconds
+def _proc_ctrl_time(df: pd.DataFrame) -> pd.DataFrame:
+    ctrl_df = df.filter(regex="CTRL", axis=1)
+    ctrl_df = ctrl_df.replace(["--", ""], "0:-1")
+    ctrl_df = ctrl_df.map(_convert_timestr_to_sec)
+    df.loc[:, ctrl_df.columns] = ctrl_df
+
+    return df
 
 
 # given a dataframe and column name (list of col names?) that stores data strings of LANDED of ATTEMPTED form
 # return dataframe with new columns col_name_landed and col_name_attempted as integers
 # also, drop original col (making this toggleable for troubleshooting)
 
-# mapping empty vals to -1 by default to distenguish them from genuine 0's
+# mapping empty vals in land/attempt to -1 by default to distenguish them from genuine 0's
 
 
 def _expand_land_attempt_col(col=pd.Series, empty_str_map=-1) -> pd.DataFrame:
