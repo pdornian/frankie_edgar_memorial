@@ -232,5 +232,7 @@ def _parse_pct_df(
     for col in pct_df.columns:
         pct_df[col] = pct_df[col].str.replace("%", "").astype(float) / 100
     df.loc[:, pct_df.columns] = pct_df
+    # column types inherited from df, need to map to float again
+    df[pct_df.columns] = df[pct_df.columns].astype(float)
 
     return df
