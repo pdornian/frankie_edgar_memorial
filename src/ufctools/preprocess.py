@@ -148,6 +148,8 @@ def process_fight_data(
     df = _proc_land_attempt_cols(df, land_att_col_names)
     df = _proc_ctrl_time(df)
     df = _parse_pct_df(df)
+    df = _cast_int_cols(df)
+    df = _reorder_cols(df, ["EVENT_ID", "DATE"])
 
     if save_local:
         df.to_csv(save_dest, sep=";")
@@ -243,10 +245,29 @@ def _parse_pct_df(
 # KD, STR, TD, REV, CTRL
 # to int EXCEPT if followed by PCT (because then its float)
 def _cast_int_cols(
-    df: pd.DataFrame, col_substrings: tuple[str] = ("KD", "STR", "TD", "REV")
+    df: pd.DataFrame,
+    col_substrings: tuple[str] = ("KD", "STR", "TD", "REV", "CTRL", "SUB"),
 ) -> pd.DataFrame:
     for substring in col_substrings:
         filtered_df = df.filter(regex=f"{substring}_(?!PCT)")
-        df[filtered_df.columns] = filtered_df.astype(int)
+        # at this point, we can map null to 0. i think. i hope.
+        filtered_df = filtered_df.fillna(0)
+        df[filtered_df.columns] = filtered_df
+        df[filtered_df.columns] = df[filtered_df.columns].astype(int)
 
+    return df
+
+
+def _reorder_cols(df: pd.DataFrame, cols: tuple[str], insert_loc: int = 1) -> pd.DataFrame:
+    # helper function solely for extracting EVENT_ID and DATE cols
+    # from middle of df and moving to front by fight metadata
+
+    col_df = df[cols]
+    df = df.drop(columns=cols)
+
+    for col_name in cols:
+        df.insert(insert_loc, col_name, col_df[col_name])
+
+    # copy to reduce fragmentation. i don't think this makes a difference, but sure.
+    df = df.copy()
     return df
