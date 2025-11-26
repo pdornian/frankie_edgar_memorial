@@ -130,6 +130,11 @@ def process_fight_data(
     # details: not touching this right now
     # could extract submission details + ref scorecard eventually.
 
+    #########
+    # ALL OBJECT NULLS FILLED TO EMPTY STRING
+    # FORGETTING THIS LEADS TO UNEXPECTED BEHAVIOUR
+    #########
+
     # fill string NA's with empty string
     # this might fuck up any non-string column that got typed as an object, care
     df.loc[:, df.select_dtypes("object").columns] = df.select_dtypes("object").fillna(
@@ -141,6 +146,7 @@ def process_fight_data(
 
     df = _proc_land_attempt_cols(df, land_att_col_names)
     df = _proc_ctrl_time(df)
+    df = _parse_pct_df(df)
 
     if save_local:
         df.to_csv(save_dest, sep=";")
@@ -202,3 +208,29 @@ def _proc_land_attempt_cols(
     if drop_original_cols:
         output_df = output_df.drop(columns=col_list)
     return output_df
+
+
+# having both this and _parse_pct_column is dumb but i don't feel like
+# rewriting them yet
+def _parse_pct_df(
+    df: pd.DataFrame,
+    filter_by: str = "REGEX",
+    regex_filter: str = "PCT",
+    cols: tuple[str] = (),
+) -> pd.DataFrame:
+
+    # filter by REGEX to filter for col names containing "regex_filter"
+    # filter by COLS to specify exact column names
+    if filter_by == "REGEX":
+        pct_df = df.filter(regex=regex_filter, axis=1)
+    elif filter_by == "COLS":
+        pct_df = df.filter(items=cols)
+
+    # replace empty strings with %-100
+    # to distinguish between 0% and no attempts
+    pct_df = pct_df.replace(["", "--", "---"], "%-100")
+    for col in pct_df.columns:
+        pct_df[col] = pct_df[col].str.replace("%", "").astype(float) / 100
+    df.loc[:, pct_df.columns] = pct_df
+
+    return df
