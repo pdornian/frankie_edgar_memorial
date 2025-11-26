@@ -94,6 +94,7 @@ def _parse_pct_col(col: pd.Series) -> pd.Series:
 # parse/process fight data
 
 land_att_cols = [
+    "TD",
     "ALL_STR",
     "SIG_STR",
     "HEAD",
@@ -234,5 +235,18 @@ def _parse_pct_df(
     df.loc[:, pct_df.columns] = pct_df
     # column types inherited from df, need to map to float again
     df[pct_df.columns] = df[pct_df.columns].astype(float)
+
+    return df
+
+
+# heuristic function to cast all columns containing:
+# KD, STR, TD, REV, CTRL
+# to int EXCEPT if followed by PCT (because then its float)
+def _cast_int_cols(
+    df: pd.DataFrame, col_substrings: tuple[str] = ("KD", "STR", "TD", "REV")
+) -> pd.DataFrame:
+    for substring in col_substrings:
+        filtered_df = df.filter(regex=f"{substring}_(?!PCT)")
+        df[filtered_df.columns] = filtered_df.astype(int)
 
     return df
