@@ -1,4 +1,6 @@
 # functions that act on scraped data/scraper object to process data to be ML ready.
+from datetime import date
+import numpy as np
 import pandas as pd
 
 # from src.ufctools.scraping import FightDataScraper
@@ -23,6 +25,10 @@ def process_fighter_data(
     raw_df["DOB"] = _parse_dob_col(raw_df["DOB"])
     raw_df["HEIGHT"] = _parse_height_col(raw_df["HEIGHT"])
     raw_df["WEIGHT"] = _parse_weight_col(raw_df["WEIGHT"])
+
+    # derive fighter age from DOB
+
+    raw_df["AGE"] = _get_age_from_dob_col(raw_df["DOB"])
 
     for col in pct_cols:
         raw_df[col] = _parse_pct_col(raw_df[col])
@@ -88,6 +94,23 @@ def _parse_pct_col(col: pd.Series) -> pd.Series:
     col = col.str.replace("%", "").astype(float) / 100
 
     return col
+
+
+def _get_age_from_date(birthdate: date) -> int:
+
+    # if birthdate NaT, return 0
+    if pd.isnull(birthdate):
+        age = 0
+    else:
+        # too lazy to do real year calc, get day difference and divide by 365
+        age = int(np.floor(((date.today() - birthdate).days) / 365))
+    return age
+
+
+def _get_age_from_dob_col(dob: pd.Series) -> pd.Series:
+    birth_dates = pd.to_datetime(dob, format="%b %d, %Y", errors="coerce").dt.date
+    ages = birth_dates.map(_get_age_from_date)
+    return ages
 
 
 ############################################################################################
@@ -258,7 +281,9 @@ def _cast_int_cols(
     return df
 
 
-def _reorder_cols(df: pd.DataFrame, cols: tuple[str], insert_loc: int = 1) -> pd.DataFrame:
+def _reorder_cols(
+    df: pd.DataFrame, cols: tuple[str], insert_loc: int = 1
+) -> pd.DataFrame:
     # helper function solely for extracting EVENT_ID and DATE cols
     # from middle of df and moving to front by fight metadata
 
